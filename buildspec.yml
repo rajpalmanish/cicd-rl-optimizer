@@ -10,6 +10,10 @@ phases:
       - pip install stable-baselines3
       - pip install numpy pandas
 
+  pre_build:
+    commands:
+      - echo "START_TIME=$(date +%s)" > metrics.txt
+
   build:
     commands:
       - echo Running environment test
@@ -17,4 +21,17 @@ phases:
 
   post_build:
     commands:
-      - echo Build completed
+      - echo "END_TIME=$(date +%s)" >> metrics.txt
+      - echo "BUILD_STATUS=$CODEBUILD_BUILD_SUCCEEDING" >> metrics.txt
+
+      # Failure classification
+      - if [ $CODEBUILD_BUILD_SUCCEEDING -eq 1 ]; then echo "failure_type=none" >> metrics.txt; else echo "failure_type=build_error" >> metrics.txt; fi
+
+      # Compute build time
+      - START=$(grep START_TIME metrics.txt | cut -d '=' -f2)
+      - END=$(grep END_TIME metrics.txt | cut -d '=' -f2)
+      - BUILD_TIME=$((END-START))
+      - echo "build_time=$BUILD_TIME" >> metrics.txt
+
+      # Upload metrics to S3
+      - aws s3 cp metrics.txt s3://cicd-rl-system-manish/logs/$CODEBUILD_BUILD_ID.txt
