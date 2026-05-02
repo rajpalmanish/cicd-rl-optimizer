@@ -35,4 +35,4 @@ phases:
 
       - echo "failure_type=none" >> metrics.txt
 
-      - aws s3 cp metrics.txt s3://<YOUR_BUCKET>/logs/$CODEBUILD_BUILD_ID.txt
+      - aws s3 cp metrics.txt s3://cicd-rl-system-manish/logs/$CODEBUILD_BUILD_ID.txt
