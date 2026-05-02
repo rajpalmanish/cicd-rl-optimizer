@@ -1,62 +1,67 @@
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
-import random
 
 
 class CICDEnv(gym.Env):
 
-    def __init__(self):
+    def __init__(self, df):
         super(CICDEnv, self).__init__()
 
+        # Dataset (real pipeline data)
+        self.df = df.reset_index(drop=True)
+        self.current_step = 0
+
         # STATE SPACE
-        # commit_size (0–500)
-        # files_changed (0–50)
+        # commit_size, files_changed
         self.observation_space = spaces.Box(
             low=np.array([0, 0]),
-            high=np.array([500, 50]),
+            high=np.array([10000, 100]),
             dtype=np.float32
         )
 
         # ACTION SPACE
-        # 0 = small compute
-        # 1 = medium compute
-        # 2 = large compute
+        # 0 = SMALL, 1 = MEDIUM, 2 = LARGE
         self.action_space = spaces.Discrete(3)
 
-    def reset(self, seed=None):
+    def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
 
-        commit_size = random.randint(10, 500)
-        files_changed = random.randint(1, 20)
+        self.current_step = 0
+        return self._get_state(), {}
 
-        state = np.array([commit_size, files_changed], dtype=np.float32)
+    def _get_state(self):
+        row = self.df.iloc[self.current_step]
 
-        return state, {}
+        state = np.array([
+            row["commit_size"],
+            row["files_changed"]
+        ], dtype=np.float32)
+
+        return state
 
     def step(self, action):
 
-        commit_size = random.randint(10, 500)
+        row = self.df.iloc[self.current_step]
 
-        # simulate compute behaviour
-        if action == 0:  # small compute
-            build_time = commit_size * 0.6
-            cost = 0.3
+        # Expected correct action from dataset
+        expected_action = row["action"]
 
-        elif action == 1:  # medium compute
-            build_time = commit_size * 0.4
-            cost = 0.5
+        # Reward from dataset (already computed)
+        reward = row["reward"]
 
-        else:  # large compute
-            build_time = commit_size * 0.2
-            cost = 0.8
+        # Optional: Penalize wrong action (helps learning)
+        if action != expected_action:
+            reward -= 5
 
-        reward = -(build_time + cost)
+        # Move to next step
+        self.current_step += 1
 
-        done = True
+        done = self.current_step >= len(self.df) - 1
 
-        next_state = np.array([
-            random.randint(10, 500),
-            random.randint(1, 20)
-        ], dtype=np.float32)
+        if not done:
+            next_state = self._get_state()
+        else:
+            next_state = np.zeros(2, dtype=np.float32)
 
         return next_state, reward, done, False, {}
