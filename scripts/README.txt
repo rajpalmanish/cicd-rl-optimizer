@@ -3,3 +3,4 @@ This S3 bucket stores:
 - RL trained models
 - logs for training
 - Test Run 1
+- Test Run 2
